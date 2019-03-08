@@ -76,7 +76,7 @@ MODULE Eval_friction_law_mod
                                    NorStressGP,XYStressGP,XZStressGP,  & ! IN: Godunov status
                                    iFace,iSide,iElem,time,timePoints,          & ! IN: element ID, time, inv Trafo
                                    rho,rho_neig,w_speed,w_speed_neig,  & ! IN: background values
-                                   EQN,DISC,MESH,MPI,IO,BND)             ! global variables
+                                   EQN,DISC,MESH,MPI,IO,BND, absoluteSlip)             ! global variables
     !-------------------------------------------------------------------------!
     IMPLICIT NONE
     !-------------------------------------------------------------------------!
@@ -86,6 +86,7 @@ MODULE Eval_friction_law_mod
     TYPE(tMPI)                     :: MPI
     TYPE(tInputOutput)             :: IO
     TYPE (tBoundary)               :: BND
+    real*8, pointer                :: absoluteSlip(:)
     !-------------------------------------------------------------------------!
     ! Local variable declaration
     INTEGER     :: nBndGP,iTimeGP,nTimeGP
@@ -170,7 +171,7 @@ MODULE Eval_friction_law_mod
                                 iFace,iSide,iElem,nBndGP,nTimeGP,          & ! IN: element ID and GP lengths
                                 rho,rho_neig,w_speed,w_speed_neig,         & ! IN: background values
                                 time,DeltaT,                               & ! IN: time
-                                DISC,EQN,MESH,MPI,IO)                          
+                                DISC,EQN,MESH,MPI,IO,absoluteSlip)                          
         CASE(101) ! Specific conditions for SCEC TPV101
                       ! as case 3 (rate-and-state friction) aging law
                       ! + time and space dependent nucleation
@@ -555,7 +556,7 @@ MODULE Eval_friction_law_mod
                                    iFace,iSide,iElem,nBndGP,nTimeGP,          & ! IN: element ID and GP lengths
                                    rho,rho_neig,w_speed,w_speed_neig,         & ! IN: background values
                                    time,DeltaT,                               & ! IN: time
-                                   DISC,EQN,MESH,MPI,IO)
+                                   DISC,EQN,MESH,MPI,IO,absoluteSlip)
     !-------------------------------------------------------------------------!
     IMPLICIT NONE
     !-------------------------------------------------------------------------!
@@ -586,6 +587,7 @@ MODULE Eval_friction_law_mod
     REAL        :: t_0
     REAL        :: f1(nBndGP), f2(nBndGP)
     real        :: tn
+    real*8, pointer                :: absoluteSlip(:)
     !-------------------------------------------------------------------------!
     INTENT(IN)    :: NorStressGP,XYStressGP,XZStressGP,iFace,iSide,iElem
     INTENT(IN)    :: rho,rho_neig,w_speed,w_speed_neig,time,nBndGP,nTimeGP,DeltaT
@@ -597,7 +599,19 @@ MODULE Eval_friction_law_mod
     
     srFactor = -(1.0D0/(w_speed(2)*rho)+1.0D0/(w_speed_neig(2)*rho_neig))
     tn = time
-    
+
+    f1=dmin1(ABS(absoluteSlip(:))/DISC%DynRup%D_C(:,iFace),1d0)
+    IF (t_0.eq.0) THEN
+      where (tn >= DISC%DynRup%forced_rupture_time(:,iFace))
+        f2=1.
+      elsewhere
+         f2=0.
+      end where
+    ELSE
+      f2=dmax1(0d0,dmin1((time-DISC%DynRup%forced_rupture_time(:,iFace))/t_0,1d0))
+    ENDIF
+    DISC%DynRup%Mu(:,iFace) = DISC%DynRup%Mu_S(:,iFace) - (DISC%DynRup%Mu_S(:,iFace)-DISC%DynRup%Mu_D(:,iFace))*dmax1(f1,f2)
+
     do iTimeGP=1,nTimeGP
       time_inc = DeltaT(iTimeGP)
       tn=tn + time_inc
@@ -630,21 +644,7 @@ MODULE Eval_friction_law_mod
       DISC%DynRup%Slip2(:,iFace) = DISC%DynRup%Slip2(:,iFace) + DISC%DynRup%SlipRate2(:,iFace)*time_inc
       DISC%DynRup%Slip(:,iFace)  = DISC%DynRup%Slip(:,iFace)  + LocSR(:)*time_inc      
       tmpSlip = tmpSlip(:) + LocSR(:)*time_inc
-      
-     ! Modif T. Ulrich-> generalisation of tpv16/17 to 30/31
-     f1=dmin1(ABS(DISC%DynRup%Slip(:,iFace))/DISC%DynRup%D_C(:,iFace),1d0)
-     IF (t_0.eq.0) THEN
-      where (tn >= DISC%DynRup%forced_rupture_time(:,iFace))
-         f2=1.
-      elsewhere
-         f2=0.
-      end where
-     ELSE
-        f2=dmax1(0d0,dmin1((time-DISC%DynRup%forced_rupture_time(:,iFace))/t_0,1d0))
-     ENDIF
-
-     DISC%DynRup%Mu(:,iFace) = DISC%DynRup%Mu_S(:,iFace) - (DISC%DynRup%Mu_S(:,iFace)-DISC%DynRup%Mu_D(:,iFace))*dmax1(f1,f2)
-     
+          
      TractionGP_XY(:,iTimeGP) = LocTracXY(:)
      TractionGP_XZ(:,iTimeGP) = LocTracXZ(:)      
     enddo
