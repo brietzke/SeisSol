@@ -1533,13 +1533,13 @@ MODULE Eval_friction_law_mod
              LocSR=ABS(SRtest)
              !
          ENDDO !  j=1,nSVupdates   !This loop corrects SV values
-         if (.NOT.has_converged) THEN
+         !if (.NOT.has_converged) THEN
             !logError(*) 'nonConvergence RS Newton', time
             if (tmp(1).NE.tmp(1)) then
                logError(*) 'NaN detected', time
                STOP
             endif
-         ENDIF
+         !ENDIF
          !
          ! 5. get final theta, mu, traction and slip
          ! SV from mean slip rate in tmp
