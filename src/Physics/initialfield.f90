@@ -47,20 +47,29 @@ MODULE COMMON_InitialField_mod
   IMPLICIT NONE
   PRIVATE
   !----------------------------------------------------------------------------
-  INTERFACE 
+ ! INTERFACE 
+ !    SUBROUTINE initial_field_planarwave(time, x, y, z, variables) bind(C, name="initial_field_planarwave")
+ !      use, intrinsic :: iso_c_binding
+ !      
+ !      real(kind=c_double), value :: time
+ !      real(kind=c_double), value :: x
+ !      real(kind=c_double), value :: y
+ !      real(kind=c_double), value :: z
+ !      real(kind=c_double), dimension(*), intent(inout) :: variables
+ !    end SUBROUTINE initial_field_planarwave
+ ! end INTERFACE
+ 
+  INTERFACE InitialField
+     MODULE PROCEDURE InitialField
      SUBROUTINE initial_field_planarwave(time, x, y, z, variables) bind(C, name="initial_field_planarwave")
        use, intrinsic :: iso_c_binding
-       
        real(kind=c_double), value :: time
        real(kind=c_double), value :: x
        real(kind=c_double), value :: y
        real(kind=c_double), value :: z
        real(kind=c_double), dimension(*), intent(inout) :: variables
      end SUBROUTINE initial_field_planarwave
-  end INTERFACE
-  INTERFACE InitialField
-     MODULE PROCEDURE InitialField
-     PROCEDURE Initial_Field_planarwave
+!     PROCEDURE Initial_Field_planarwave
   END INTERFACE
   !----------------------------------------------------------------------------
   PUBLIC   :: InitialField
@@ -101,7 +110,7 @@ CONTAINS
     CASE('Planarwave')
        Variable_ANE(:) = 0.
 
-       CALL Initial_Field_PlanarWave(time,x,y,z,variable)
+       CALL InitialField(time,x,y,z,variable)
     CASE('Zero')
       Variable(:) = 0.
       Variable_ANE(:) = 0.
