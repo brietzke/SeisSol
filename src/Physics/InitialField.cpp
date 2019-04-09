@@ -1,7 +1,7 @@
 #include <cmath>
 #include <array>
 
-#include "InitialField.h"
+/*#include "InitialField.h"*/
 #include "Numerical_aux/MatrixView.h"
 
 extern "C" {
